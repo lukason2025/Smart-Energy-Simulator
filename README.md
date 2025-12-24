@@ -55,33 +55,38 @@ This simulation uses an assumed household scenario with official tariff referenc
 ### 3.2. References (Official Links)
 1. **Taipower Official Rate Table (Effective 2025-10-01):**
    * https://www.taipower.com.tw/media/ba2angqi/%E5%90%84%E9%A1%9E%E9%9B%BB%E5%83%B9%E8%A1%A8%E5%8F%8A%E8%A8%88%E7%AE%97%E7%AF%84%E4%BE%8B.pdf?mediaDL=true  
-   * Refer to: 表燈簡易型時間電價 (3段式) – 非夏月
+   * Refer to: 表燈簡易型時間電價 (3段式) – 非夏月  
+   * Accessed: 2025-12-25
 2. **MOEA 2025 Renewable Energy FIT Rates (Announcement 2025-03-07):**
-   * https://www.moea.gov.tw/Mns/english/news/News.aspx?kind=6&menu_id=176&news_id=118710
+   * https://www.moea.gov.tw/Mns/english/news/News.aspx?kind=6&menu_id=176&news_id=118710  
+   * Accessed: 2025-12-25
 3. **CWA Monthly Climate Statistics (Monthly Data):**
    * https://www.cwa.gov.tw/V8/C/C/Statistics/monthlydata.html  
-   * Refer to: Sunshine Duration (日照時數)
+   * Refer to: Sunshine Duration (日照時數)  
+   * Accessed: 2025-12-25
 
 ### 3.3. Additional Engineering References (Parameter Basis)
-To ensure the realism of the simulation, the following engineering parameters were derived from industry standards and official reports.
+To ensure the realism of the simulation, the following engineering parameters were derived from official/industry references.
 
-**1. Battery Power Reference Point (3.3 kW):**
-* **Source:** Tesla Energy Library — Powerwall Specifications (Powerwall 2 AC with Backup Gateway 2)
-* **Link:** https://energylibrary.tesla.com/docs/Public/EnergyStorage/Powerwall/2/InstallManual/BackupGateway/2/en-us/GUID-05D2F038-D8E2-45AF-9F8C-7A3076858433.html
-* **Engineering Logic:** Tesla lists **Real Power, Max Continuous (On-Grid) = 5 kW**, but also notes that key performance values are provided for **25°C at 3.3 kW charge/discharge power**. This supports using `P_ch_max = P_dis_max = 3.3` as a realistic residential operating point (conservative vs. the 5 kW maximum).  
-* **Accessed:** 2025-12-25
+**1. Battery Power Rating Basis (3.3 kW):**
+* **Source:** Tesla Powerwall 2 AC Datasheet (Feb 2020, UK)
+* **Link:** https://www.tesla.com/sites/default/files/pdfs/powerwall/Powerwall2ACDatasheet_EN_UK_feb2020.pdf
+* **Evidence in Datasheet:** The datasheet footnote states the provided performance values are at **3.3 kW charge/discharge power**.
+* **Engineering Logic:** In this project, `P_ch_max = 3.3` and `P_dis_max = 3.3` are used as a conservative residential BESS charge/discharge rating consistent with the datasheet’s stated test condition.
+* Accessed: 2025-12-25
 
 **2. Residential Load Profile (Winter Evening Peak):**
-* **Source:** U.S. Energy Information Administration (EIA) — “Hourly electricity consumption varies throughout the day and across seasons”
+* **Source:** U.S. Energy Information Administration (EIA) - “Hourly electricity consumption varies throughout the day and across seasons”
 * **Link:** https://www.eia.gov/todayinenergy/detail.php?id=42915
-* **Engineering Logic:** The report confirms that residential electricity demand in winter peaks significantly in the evening (heating/lighting). This supports the constructed load profile with a 2.5 kW peak at 18:00–22:00.  
-* **Accessed:** 2025-12-25
+* **Engineering Logic:** The report supports the common residential pattern where demand peaks in the evening during winter (lighting/heating-related usage). This supports using an evening peak in the constructed load profile.
+* Accessed: 2025-12-25
 
-**3. Battery Efficiency (eta = 0.95 derived from 90% RTE):**
-* **Source:** Tesla Energy Library — Powerwall Specifications (Round Trip Efficiency)
-* **Link:** https://energylibrary.tesla.com/docs/Public/EnergyStorage/Powerwall/2/InstallManual/BackupGateway/2/en-us/GUID-05D2F038-D8E2-45AF-9F8C-7A3076858433.html
-* **Engineering Logic:** Tesla specifies **Round Trip Efficiency = 90%** (AC → battery → AC, beginning of life). Since the simulator applies losses separately in charge and discharge steps, one-way efficiency is approximated as `sqrt(0.90) ≈ 0.95`, justifying `eta_ch = eta_dis = 0.95`.  
-* **Accessed:** 2025-12-25
+**3. Battery Efficiency (eta = 0.95) from Round-Trip Efficiency:**
+* **Source:** Tesla Powerwall 2 AC Datasheet (Feb 2020, UK)
+* **Link:** https://www.tesla.com/sites/default/files/pdfs/powerwall/Powerwall2ACDatasheet_EN_UK_feb2020.pdf
+* **Evidence in Datasheet:** Round Trip Efficiency is listed as **90%** (AC-to-battery-to-AC).
+* **Engineering Logic:** The simulation uses separate charge/discharge efficiencies, so the one-way efficiency is approximated as `eta = sqrt(0.90) ≈ 0.95`.
+* Accessed: 2025-12-25
 
 ---
 
@@ -218,7 +223,9 @@ The `simulate(strategy_name, bat_params)` function handles the hour-by-hour logi
   * **Normal:** Default to self-consumption logic.
 
 ### 9.4. Visualization & Analysis
-* **Plotting:** Generates 5 comparative plots using `matplotlib` to visualize SOC, Cost, and Power Flows.
+* **Plotting:** Generates **5 plots** using `matplotlib`:
+  * 4 comparison plots (SOC, Cost, Load vs PV, Grid buy/sell flow)
+  * 1 sensitivity analysis plot (Battery capacity vs Total daily cost)
 * **Sensitivity Analysis Module:** The sensitivity function iteratively runs the simulator with varying `E_max` values (while scaling `E_init`) to quantify the economic impact of battery size.
 
 ### 9.5. File Structure
@@ -235,7 +242,7 @@ This project was developed through the following systematic 5-step process, rang
 ### 10.1. Scenario Data Construction & Engineering Basis
 First, to set parameters for each smart grid strategy, I defined a specific scenario of **'December (Winter) in Taiwan'** and constructed the necessary data based on engineering grounds using Python lists.
 * **Data Construction:** Considering the winter context, the `pv` list assumes a 5.0 kWp panel but limits the maximum output to **3.5 kW**. This **70% derating assumption** was applied to reflect the low solar angle and cloudy weather in Taipei, referencing **CWA sunshine duration statistics**, with generation hours limited to 07:00–17:00.
-* **Parameter Setup:** Battery specifications were defined in the `BAT` dictionary. For a fair test, `E_init` was set to **5.0** (50% of capacity), charge/discharge rates (`P_ch_max`/`P_dis_max`) to **3.3** (residential standard), and efficiency `eta` to **0.95**. Electricity prices (`price_buy`, `price_sell`) were adopted from official Taipower and MOEA documents.
+* **Parameter Setup:** Battery specifications were defined in the `BAT` dictionary. For a fair test, `E_init` was set to **50% of capacity**, charge/discharge rates (`P_ch_max`/`P_dis_max`) to **3.3**, and efficiency `eta` to **0.95**. Electricity prices (`price_buy`, `price_sell`) were adopted from official Taipower and MOEA documents.
 
 ### 10.2. Comparative Strategy Design (Strategy A vs B)
 To compare performance, I designed two contrasting logic flows within the `simulate(strategy_name, bat_params)` function.
@@ -247,14 +254,14 @@ The core simulation engine was implemented within a loop iterating through 24 ho
 1. **Net Load Calculation:** In each step, `net_load = P_load - P_pv` was calculated to determine the power balance (Positive: Deficit, Negative: Surplus).
 2. **Decision Making:**
    * **Strategy A:** When `net_load < 0`, the battery charges within limits using `P_ch = min(surplus, P_ch_max, (E_max-E)/eta)`. When `net_load > 0`, it discharges using `P_dis = min(deficit, ...)`.
-   * **Strategy B:** It uses conditional logic based on price. `if curr_price < 2.5:` detects cheap periods for max-speed charging (`P_ch = min(...)`). `elif curr_price > 4.0:` detects high-price periods for discharging. Crucially, to enforce **"No Battery Export,"** I declared `deficit = max(0.0, net_load)` and constrained discharge with `P_dis = min(deficit, ...)` to ensure it covers only the household shortage.
+   * **Strategy B:** It uses conditional logic based on price. `if curr_price < 2.5:` detects cheap periods for max-speed charging (`P_ch = min(...)`). `elif curr_price > 4.0 and net_load > 0:` triggers discharging only when there is an actual deficit (this prevents a surplus-time bug where energy could “disappear” by forcing discharge when `net_load <= 0`). To enforce **"No Battery Export,"** discharge is constrained to cover only household shortage: `P_dis = min(deficit, ...)`.
 3. **Battery State Update (Difference Equation):** I applied a chemical engineering mass balance concept to form the difference equation:
    * `E_next = E + (eta_ch * P_ch - P_dis / eta_dis) * DT`
-   * I multiplied efficiency (`* eta`) during charging and divided by efficiency (`/ eta`) during discharging to reflect thermodynamic losses, using `max(0.0, min(E_max, E_next))` to clamp SOC within `0 <= E <= E_max`.
+   * I multiplied efficiency (`* eta`) during charging and divided by efficiency (`/ eta`) during discharging to reflect losses, using `max(0.0, min(E_max, E_next))` to clamp SOC within **0–E_max**.
 4. **Cost Calculation:** I wrote logic to accumulate `total_cost` by adding costs (`+= P_grid * price_buy`) if `P_grid > 0` (Import) and subtracting revenue (adding negative cost) if `P_grid < 0` (Export).
 
 ### 10.4. Visualization
-To verify the integrity of the implemented logic, I used `matplotlib` to generate **five plots** (4 comparative plots + 1 sensitivity plot). Using list data collected during simulation (e.g., `soc_history`, `cost_history`, `grid_buy_flow`), I visually confirmed the physical validity of battery behavior and the peak-shaving effect of Strategy B (comparing solid vs. dashed lines).
+To verify the integrity of the implemented logic, I used `matplotlib` to generate **5 plots** (4 comparison plots + 1 sensitivity plot). Using list data collected during simulation (e.g., `soc_history`, `cost_history`, `grid_buy_flow`), I visually confirmed the physical validity of battery behavior and the peak-shaving effect of Strategy B (comparing solid vs. dashed lines).
 
 ### 10.5. Sensitivity Analysis
 Finally, to analyze how economics change with the system's largest variable, **'Total Battery Capacity,'** I implemented a separate function `sensitivity_sweep_emax(emax_list)`.
@@ -271,18 +278,22 @@ This project underwent the following modifications and enhancements during the d
 ### 11.1. Methodology Shift (Optimization -> Simulation)
 Initially, I approached this as a mathematical optimization problem (like Linear Programming) to minimize total costs. However, defining decision variables for every hour and formulating complex constraints made the implementation difficult and reduced code transparency. Therefore, I shifted the design to a **Scenario-based Simulation** method. I collected actual Taiwan TOU rates and solar data to build the environment and directly implemented the battery difference equation and cost accumulation logic to improve code clarity and explainability.
 
-### 11.2. Logic Refinement: Discharge Limit
-While testing Strategy B (Price Optimization), I discovered a critical inefficiency. The initial logic was set to discharge at maximum power unconditionally during **high-price semi-peak periods** (>4.0 NTD). However, this depleted the battery too early, leaving no power when actually needed, or wasted energy by exporting it to the grid unnecessarily. To solve this, I added a constraint: **"Discharge covers only the household power deficit"** (`P_dis = min(deficit, ...)`).  
-Additionally, I added an explicit condition (`net_load > 0`) in the high-price discharge branch to prevent a bug where forced discharge could occur even when PV surplus exists (which made surplus energy appear to “disappear” in the balance).
+### 11.2. Logic Refinement: Discharge Limit (Deficit-Only, No Battery Export)
+While testing Strategy B (Price Optimization), I discovered a critical inefficiency. The initial logic could discharge too aggressively during **high-price (semi-peak) periods**, depleting the battery early or causing unnecessary export. To solve this, I added a constraint: **"Discharge covers only the household power deficit"** (`P_dis = min(deficit, ...)`). This modification aligns the model with realistic residential BESS operation (backup and cost-saving) rather than merchant export.
 
-### 11.3. Scenario Selection (Winter Scenario)
+### 11.3. Bug Fix (Prevent Surplus-Time Forced Discharge)
+A specific bug was identified in Strategy B: if the code forced discharge whenever `curr_price > 4.0`, it could trigger even when `net_load <= 0` (PV surplus). This could create an “energy disappearing” behavior in the accounting. I fixed this by adding an explicit condition:
+* `elif curr_price > 4.0 and net_load > 0:`
+This ensures forced discharge happens only when there is a real household deficit.
+
+### 11.4. Scenario Selection (Winter Scenario)
 Choosing the seasonal scenario required engineering judgment. Summer and Winter have vastly different peak load times and solar generation hours. I selected **December (Winter)** as it is most relevant to the current season. Since winter has shorter daylight hours and less generation, energy is scarce, making efficient management crucial. This characteristic of the winter scenario resulted in clearer performance differences between Strategy A and Strategy B compared to a summer scenario.
 
-### 11.4. Sensitivity Analysis for Variable Expansion
+### 11.5. Sensitivity Analysis for Variable Expansion
 Beyond single-condition simulation, I wanted to understand how the system's key hardware variable, **'Battery Capacity (E_max),'** affects the results. To achieve this, I added a `for` loop at the end of the main logic to iterate through capacities of `[5, 8, 10, 12, 15]` kWh. I built an automated test bench that not only changes the capacity but also automatically adjusts the initial SOC ratio (maintaining 50%), allowing for a quantitative analysis of economic trends based on battery size.
 
-### 11.5. Physical Modeling Corrections
-In the initial implementation, I used an ideal model without considering energy conversion losses, but confirmed that this led to significant discrepancies from real physical phenomena. Considering that actual batteries do not store or output 100% of input energy, I applied an average Li-ion battery efficiency (**eta = 0.95**). I modified the equations to multiply efficiency during charging and divide by efficiency during discharging to reflect thermodynamic losses. Additionally, to clearly link Power (kW), Energy (kWh), and Time (h), I applied a time variable `DT=1.0` to all integration formulas, ensuring numerical and physical consistency.
+### 11.6. Physical Modeling Corrections (Efficiency + Unit Consistency)
+In the initial implementation, I used an ideal model without considering conversion losses, but confirmed that this led to discrepancies from real battery behavior. Based on Tesla Powerwall 2 datasheet (Round Trip Efficiency 90%), I applied `eta = 0.95` (one-way, approximated by `sqrt(0.90)`). I modified the equations to multiply efficiency during charging and divide by efficiency during discharging. Additionally, I applied `DT=1.0` consistently so that Power (kW) × Time (h) = Energy (kWh) is preserved in all updates.
 
 ---
 
@@ -299,5 +310,4 @@ Third, **grid and policy constraints were simplified**. The model assumes the gr
 Lastly, **Strategy B relies on heuristic rules** (threshold-based control) rather than mathematical optimization. While this approach offers high transparency and explainability, it does not guarantee a mathematically global optimum compared to advanced solvers like Mixed-Integer Linear Programming (MILP) or Dynamic Programming.
 
 
----
 
